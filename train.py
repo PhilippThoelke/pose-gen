@@ -213,5 +213,5 @@ if __name__ == "__main__":
     module = VAE(channels=data[0][0].size(0))
 
     # train model
-    trainer = pl.Trainer(max_epochs=-1, log_every_n_steps=32)
+    trainer = pl.Trainer(max_epochs=-1, log_every_n_steps=32, accelerator="auto", devices="auto")
     trainer.fit(module, dl)
