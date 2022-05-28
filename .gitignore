@@ -127,3 +127,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# VS code dir
+.vscode
+
+# data directory
+data/
+
+# logdir
+lightning_logs/
