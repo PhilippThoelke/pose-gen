@@ -6,7 +6,13 @@ import cv2
 import mediapipe as mp
 
 
-def main(latent_scaling=2, latent_vel_factor=0.01, latent_damping=0.8):
+def main(
+    latent_scaling=1,
+    latent_vel_factor=0.005,
+    latent_damping=0.8,
+    dynamic_latent=False,
+    adaptive_scaling=False,
+):
     # load data
     data = np.load("data/hands.npy")
 
@@ -31,6 +37,9 @@ def main(latent_scaling=2, latent_vel_factor=0.01, latent_damping=0.8):
     initial_buffer = data.reshape(data.shape[0], -1) @ landmark_proj.numpy()
     landmark_buffer = deque(initial_buffer, maxlen=1000)
 
+    cv2.namedWindow("img", cv2.WND_PROP_FULLSCREEN)
+    cv2.setWindowProperty("img", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+
     while True:
         # read a frame from the camera
         _, img = cap.read()
@@ -47,7 +56,8 @@ def main(latent_scaling=2, latent_vel_factor=0.01, latent_damping=0.8):
             # hand landmarks to latent distribution
             z = landmarks.flatten() @ landmark_proj
             # normalize landmark points individually
-            landmark_buffer.append(z.numpy())
+            if adaptive_scaling:
+                landmark_buffer.append(z.numpy())
             if len(landmark_buffer) > 1:
                 landmark_buffer_arr = np.array(landmark_buffer)
                 mean = landmark_buffer_arr.mean(axis=0)
@@ -56,11 +66,14 @@ def main(latent_scaling=2, latent_vel_factor=0.01, latent_damping=0.8):
             # scale latent dim according to network
             z = z * latent_scaling
             z = z * model.running_std + model.running_mean
-            # update latent vector
-            latent_vel *= latent_damping
-            magnitude = (previous_z - z).norm()
-            latent_vel += (z - latent) * magnitude * latent_vel_factor
-            latent += latent_vel
+            if dynamic_latent:
+                # update latent vector
+                latent_vel *= latent_damping
+                magnitude = (previous_z - z).norm()
+                latent_vel += (z - latent) * magnitude * latent_vel_factor
+                latent += latent_vel
+            else:
+                latent = z
             # generate image
             img = model.decode(latent).permute(1, 2, 0).numpy() / 2 + 0.5
             # visualize the image
