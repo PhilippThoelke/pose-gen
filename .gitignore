@@ -134,5 +134,5 @@ dmypy.json
 # data directory
 data/
 
-# logdir
-lightning_logs/
+# models directory
+models/

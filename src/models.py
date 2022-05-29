@@ -1,12 +1,27 @@
+import numpy as np
+from sklearn.decomposition import PCA
 import torch
 from torch import nn
 from torch.nn import functional as F
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
-from torch.utils.data import DataLoader
-from torchvision.datasets import CIFAR10, MNIST, Flowers102, LFWPeople
-from torchvision.transforms import Compose, ToTensor, Lambda, Resize
 import pytorch_lightning as pl
+
+
+class Eigenface:
+    def __init__(self, images, latent_dim=100):
+        self.latent_dim = latent_dim
+        self.img_shape = images.shape[1:]
+
+        self.pca = PCA(n_components=latent_dim)
+        latent = self.pca.fit_transform(images.reshape(images.shape[0], -1))
+
+        self.latent_mean = latent.mean(axis=0)
+        self.latent_std = latent.std(axis=0)
+
+    def generate(self, latent):
+        img = self.pca.inverse_transform(latent).reshape(self.img_shape)
+        return img.astype(np.float32)
 
 
 class VAE(pl.LightningModule):
@@ -160,8 +175,6 @@ class VAE(pl.LightningModule):
         self.log("recons_loss", recons_loss)
         self.log("kl_loss", kl_loss)
         self.log("lr", self.optimizers().param_groups[0]["lr"])
-        self.logger.experiment.add_histogram("mu", mu, global_step=self.global_step)
-        self.logger.experiment.add_histogram("std", std, global_step=self.global_step)
         self.logger.experiment.add_images("input", x / 2 + 0.5)
         self.logger.experiment.add_images("reconstruction", recons / 2 + 0.5)
         return loss
@@ -169,7 +182,7 @@ class VAE(pl.LightningModule):
     def configure_optimizers(self):
         opt = Adam(self.parameters(), lr=self.learning_rate)
         opt.param_groups[0]["initial_lr"] = self.learning_rate
-        sched = ExponentialLR(opt, gamma=0.7, last_epoch=-1)
+        sched = ExponentialLR(opt, gamma=0.9, last_epoch=-1)
         return dict(optimizer=opt, lr_scheduler=sched)
 
     def optimizer_step(self, *args, **kwargs):
@@ -178,6 +191,20 @@ class VAE(pl.LightningModule):
                 (self.global_step + 1) / self.warmup_steps
             )
         return super().optimizer_step(*args, **kwargs)
+
+    @property
+    def latent_mean(self):
+        return self.running_mean.numpy()
+
+    @property
+    def latent_std(self):
+        return self.running_std.numpy()
+
+    def generate(self, latent):
+        latent = torch.from_numpy(latent).float()
+        with torch.no_grad():
+            img = self.decode(latent).permute(1, 2, 0).numpy()
+        return img / 2 + 0.5
 
 
 class ResidualBlock(nn.Module):
@@ -199,21 +226,3 @@ class ResidualBlock(nn.Module):
         if self.out:
             return torch.tanh(x)
         return F.leaky_relu(self.norm(x))
-
-
-if __name__ == "__main__":
-    # load data
-    data_transforms = Compose(
-        [ToTensor(), Lambda(lambda x: x * 2 - 1), Resize((200, 200))]
-    )
-    data = LFWPeople("data/", transform=data_transforms)
-    dl = DataLoader(data, batch_size=8, shuffle=True, num_workers=4)
-
-    # create lightning module
-    module = VAE(channels=data[0][0].size(0))
-
-    # train model
-    trainer = pl.Trainer(
-        max_epochs=-1, log_every_n_steps=32, accelerator="auto", devices="auto"
-    )
-    trainer.fit(module, dl)
