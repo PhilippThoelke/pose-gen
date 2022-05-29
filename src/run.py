@@ -13,7 +13,7 @@ def main(
     latent_scaling=1,
     latent_vel_factor=0.005,
     latent_damping=0.8,
-    dynamic_latent=False,
+    dynamic_latent=True,
     adaptive_scaling=True,
     latent_buffer_size=1000,
 ):

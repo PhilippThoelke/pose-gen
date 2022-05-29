@@ -11,7 +11,7 @@ from models import Eigenface
 if __name__ == "__main__":
     num_images = 2500
     resize = True
-    resize_shape = (256, 256)
+    resize_shape = (160, 160)
 
     data_transforms = ToTensor()
     if resize:
