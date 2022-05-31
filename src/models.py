@@ -1,5 +1,3 @@
-import numpy as np
-from sklearn.decomposition import PCA
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -9,19 +7,24 @@ import pytorch_lightning as pl
 
 
 class Eigenface:
-    def __init__(self, images, latent_dim=100):
+    def __init__(self, images, latent_dim=200, niter=10):
+        if not isinstance(images, torch.Tensor):
+            images = torch.tensor(images).float()
+
         self.latent_dim = latent_dim
         self.img_shape = images.shape[1:]
 
-        self.pca = PCA(n_components=latent_dim)
-        latent = self.pca.fit_transform(images.reshape(images.shape[0], -1))
+        images = images.reshape(images.size(0), -1)
+        _, self.eigenvalues, self.principal_components = torch.pca_lowrank(
+            images, q=latent_dim, center=True, niter=niter,
+        )
 
-        self.latent_mean = latent.mean(axis=0)
-        self.latent_std = latent.std(axis=0)
+        latent = images @ self.principal_components
+        self.latent_mean = latent.mean(dim=0)
+        self.latent_std = latent.std(dim=0)
 
     def generate(self, latent):
-        img = self.pca.inverse_transform(latent).reshape(self.img_shape)
-        return img.astype(np.float32)
+        return (latent @ self.principal_components.T).reshape(self.img_shape)
 
 
 class VAE(pl.LightningModule):
@@ -194,16 +197,17 @@ class VAE(pl.LightningModule):
 
     @property
     def latent_mean(self):
-        return self.running_mean.numpy()
+        return self.running_mean
 
     @property
     def latent_std(self):
-        return self.running_std.numpy()
+        return self.running_std
 
     def generate(self, latent):
-        latent = torch.from_numpy(latent).float()
+        if not isinstance(latent, torch.Tensor):
+            latent = torch.from_numpy(latent).float()
         with torch.no_grad():
-            img = self.decode(latent).permute(1, 2, 0).numpy()
+            img = self.decode(latent).permute(1, 2, 0)
         return img / 2 + 0.5
 
 

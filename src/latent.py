@@ -1,4 +1,4 @@
-import numpy as np
+import torch
 import mediapipe as mp
 
 
@@ -23,15 +23,8 @@ class HandLatent(LatentProvider):
 
         self.projection = None
         if random_projection:
-            # initialize a random projection matrix with a uniform xavier distribution
-            xavier_range = np.sqrt(6) / np.sqrt(
-                HandLatent.LANDMARK_DIMENSION + dimension
-            )
-            self.projection = np.random.uniform(
-                -xavier_range,
-                xavier_range,
-                size=(HandLatent.LANDMARK_DIMENSION, dimension),
-            ).astype(np.float32)
+            self.projection = torch.empty(HandLatent.LANDMARK_DIMENSION, dimension)
+            torch.nn.init.xavier_uniform_(self.projection)
 
     def get_latent(self, img):
         res = self.detector.process(img)
@@ -39,14 +32,14 @@ class HandLatent(LatentProvider):
         if res.multi_hand_world_landmarks is None:
             return None
 
-        landmarks = np.array(
+        landmarks = torch.tensor(
             [[pt.x, pt.y, pt.z] for pt in res.multi_hand_world_landmarks[0].landmark]
         )
-        return self.transform(landmarks.ravel())
+        return self.transform(landmarks.flatten())
 
     def transform(self, x):
-        if not isinstance(x, np.ndarray):
-            x = np.asarray(x, dtype=np.float32)
+        if not isinstance(x, torch.Tensor):
+            x = torch.tensor(x, dtype=torch.float32)
         if self.projection is None:
             return x
         return x @ self.projection

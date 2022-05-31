@@ -1,5 +1,5 @@
 import cv2
-import pickle
+import torch
 import numpy as np
 from queue import deque
 from models import Eigenface, VAE
@@ -9,20 +9,21 @@ from latent import HandLatent
 def main(
     model,
     example_raw=None,
-    img_size=(256, 256),
+    img_size=(512, 512),
     latent_scaling=1,
     latent_vel_factor=0.005,
     latent_damping=0.8,
-    dynamic_latent=True,
+    dynamic_latent=False,
     adaptive_scaling=True,
     latent_buffer_size=1000,
+    fullscreen=True,
 ):
     # set up camera capture and pose model
     cap = cv2.VideoCapture(0)
     latent_generator = HandLatent(model.latent_dim)
 
     # initialize latent vector
-    latent, latent_vel, previous_z = np.zeros((3, model.latent_dim), dtype=np.float32)
+    latent, latent_vel, previous_z = torch.zeros((3, model.latent_dim))
 
     # landmark running averages
     if example_raw is not None:
@@ -32,8 +33,9 @@ def main(
     else:
         landmark_buffer = deque(maxlen=latent_buffer_size)
 
-    cv2.namedWindow("img", cv2.WND_PROP_FULLSCREEN)
-    cv2.setWindowProperty("img", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+    if fullscreen:
+        cv2.namedWindow("img", cv2.WND_PROP_FULLSCREEN)
+        cv2.setWindowProperty("img", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
     while True:
         # read a frame from the camera
@@ -46,9 +48,9 @@ def main(
             if adaptive_scaling:
                 landmark_buffer.append(z)
             if len(landmark_buffer) > 1:
-                landmark_buffer_arr = np.asarray(landmark_buffer)
-                mean = landmark_buffer_arr.mean(axis=0)
-                std = landmark_buffer_arr.std(axis=0)
+                landmark_buffer_arr = torch.stack(list(landmark_buffer))
+                mean = landmark_buffer_arr.mean(dim=0)
+                std = landmark_buffer_arr.std(dim=0)
                 z = (z - mean) / std
             # scale latent dim according to network
             z = z * latent_scaling
@@ -56,13 +58,13 @@ def main(
             if dynamic_latent:
                 # update latent vector
                 latent_vel *= latent_damping
-                magnitude = np.linalg.norm(previous_z - z)
+                magnitude = (previous_z - z).norm()
                 latent_vel += (z - latent) * magnitude * latent_vel_factor
                 latent += latent_vel
             else:
                 latent = z
             # generate image
-            img = model.generate(latent)
+            img = model.generate(latent).numpy()
             # visualize the image
             if img.shape[2] == 3:
                 img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
@@ -85,8 +87,7 @@ if __name__ == "__main__":
         )
         model.eval().freeze()
     elif model_type == "eigenface":
-        with open("models/eigenface.pkl", "rb") as f:
-            model = pickle.load(f)
+        model = torch.load("models/eigenface.pt")
     else:
         raise ValueError(f"Unknown model type {model_type}")
 
