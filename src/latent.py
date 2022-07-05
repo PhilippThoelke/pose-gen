@@ -1,4 +1,5 @@
 import torch
+import cv2
 import mediapipe as mp
 
 
@@ -26,8 +27,16 @@ class HandLatent(LatentProvider):
     def __init__(self, dimension, random_projection=True):
         super().__init__(dimension, random_projection, 63)
         self.detector = mp.solutions.hands.Hands(max_num_hands=1)
+        
+        # set up camera capture
+        self.cap = cv2.VideoCapture(0)
 
-    def get_latent(self, img):
+    def get_latent(self):
+        # read a frame from the camera
+        _, img = self.cap.read()
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        # detect hand landmarks
         res = self.detector.process(img)
 
         if res.multi_hand_world_landmarks is None:
@@ -44,7 +53,15 @@ class FaceLatent(LatentProvider):
         super().__init__(dimension, random_projection, 1404)
         self.detector = mp.solutions.face_mesh.FaceMesh()
 
-    def get_latent(self, img):
+        # set up camera capture
+        self.cap = cv2.VideoCapture(0)
+
+    def get_latent(self):
+        # read a frame from the camera
+        _, img = self.cap.read()
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        # detect face landmarks
         res = self.detector.process(img)
 
         if res.multi_face_landmarks is None:

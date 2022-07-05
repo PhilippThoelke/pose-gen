@@ -19,9 +19,6 @@ def main(
     latent_buffer_size=1000,
     fullscreen=True,
 ):
-    # set up camera capture
-    cap = cv2.VideoCapture(0)
-
     # initialize latent vector
     latent, latent_vel, previous_z = torch.zeros((3, img_model.latent_dim))
 
@@ -38,13 +35,10 @@ def main(
         cv2.setWindowProperty("img", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
     while True:
-        # read a frame from the camera
-        _, img = cap.read()
-        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        # extract hand landmarks
-        z = latent_model.get_latent(img_rgb)
+        # compute latent vector
+        z = latent_model.get_latent()
         if z is not None:
-            # normalize landmark points individually
+            # normalize latent variables individually
             if adaptive_scaling:
                 landmark_buffer.append(z)
             if len(landmark_buffer) > 1:
