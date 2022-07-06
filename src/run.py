@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from queue import deque
 from models import Eigenface, VAE
-from latent import HandLatent, FaceLatent
+from latent import HandLatent, FaceLatent, SoundLatent
 
 
 def main(
@@ -70,7 +70,7 @@ def main(
 if __name__ == "__main__":
     # eigenface or VAE
     img_model_type = "eigenface"
-    # hand or face
+    # hand, face or sound
     latent_model_type = "hand"
 
     # load model
@@ -91,6 +91,8 @@ if __name__ == "__main__":
         data = np.load("data/hands.npy")
     elif latent_model_type == "face":
         latent_model = FaceLatent(img_model.latent_dim)
+    elif latent_model_type == "sound":
+        latent_model = SoundLatent(img_model.latent_dim)
     else:
         raise ValueError(f"Unknown latent type {latent_model_type}")
 
