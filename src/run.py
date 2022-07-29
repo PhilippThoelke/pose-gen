@@ -68,10 +68,12 @@ def main(
 
 
 if __name__ == "__main__":
-    # eigenface or VAE
+    # eigenface, kernel-eigenface or VAE
     img_model_type = "eigenface"
     # hand, face or sound
-    latent_model_type = "hand"
+    latent_model_type = "sound"
+    # whether to jit compile the image model
+    jit_img_model = True
 
     # load model
     if img_model_type == "VAE":
@@ -81,8 +83,18 @@ if __name__ == "__main__":
         img_model.eval().freeze()
     elif img_model_type == "eigenface":
         img_model = torch.load("models/eigenface.pt")
+    elif img_model_type == "kernel-eigenface":
+        img_model = torch.load("models/kernel-eigenface.pt")
     else:
         raise ValueError(f"Unknown model type {img_model_type}")
+
+    if jit_img_model:
+        m = torch.jit.trace(img_model, torch.randn(img_model.latent_dim))
+        m.latent_dim = img_model.latent_dim
+        m.latent_mean = img_model.latent_mean
+        m.latent_std = img_model.latent_std
+        m.generate = img_model.generate
+        img_model = m
 
     # create latent model and potentially load example data
     data = None

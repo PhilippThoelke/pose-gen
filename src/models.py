@@ -1,13 +1,17 @@
+import numpy as np
 import torch
 from torch import nn
 from torch.nn import functional as F
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 import pytorch_lightning as pl
+from sklearn.decomposition import KernelPCA
 
 
-class Eigenface:
+class Eigenface(nn.Module):
     def __init__(self, images, latent_dim=200, niter=10):
+        super(Eigenface, self).__init__()
+
         if not isinstance(images, torch.Tensor):
             images = torch.tensor(images).float()
 
@@ -23,8 +27,38 @@ class Eigenface:
         self.latent_mean = latent.mean(dim=0)
         self.latent_std = latent.std(dim=0)
 
-    def generate(self, latent):
+    def forward(self, latent):
         return (latent @ self.principal_components.T).reshape(self.img_shape)
+
+    def generate(self, latent):
+        return self(latent)
+
+
+class KernelEigenface:
+    def __init__(self, images, latent_dim=200):
+        if not isinstance(images, np.ndarray):
+            try:
+                images = images.numpy()
+            except:
+                images = np.array(images)
+
+        self.latent_dim = latent_dim
+        self.img_shape = images.shape[1:]
+
+        images = images.reshape(images.shape[0], -1)
+
+        self.pca = KernelPCA(
+            n_components=latent_dim, kernel="rbf", fit_inverse_transform=True, n_jobs=-1
+        )
+        latent = self.pca.fit_transform(images)
+
+        self.latent_mean = latent.mean(axis=0)
+        self.latent_std = latent.std(axis=0)
+
+    def generate(self, latent):
+        return torch.from_numpy(
+            self.pca.inverse_transform(latent.reshape(1, -1))
+        ).reshape(self.img_shape)
 
 
 class VAE(pl.LightningModule):

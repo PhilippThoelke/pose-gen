@@ -82,7 +82,7 @@ class FaceLatent(LatentProvider):
 
 class SoundLatent(LatentProvider):
 
-    BUFFER_SIZE = 1000
+    BUFFER_SIZE = 500
     SPECTRUM_SIZE = 500
     DOWNSAMPLE = 10
     BLUR_STRENGTH = 5
