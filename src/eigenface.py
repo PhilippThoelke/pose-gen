@@ -1,3 +1,4 @@
+import os
 from tqdm import tqdm
 import torch
 from torch.utils.data import Subset
@@ -12,7 +13,7 @@ if __name__ == "__main__":
     resize = True
     resize_shape = (200, 200)
     use_kernel_pca = False
-    latent_dim = 300
+    latent_dim = 200
 
     data_transforms = ToTensor()
     if resize:
@@ -28,6 +29,9 @@ if __name__ == "__main__":
     x = torch.stack(
         [x.permute(1, 2, 0) for x, _ in tqdm(data, desc="loading data")], axis=0
     )
+
+    if not os.path.exists("models/"):
+        os.makedirs("models/")
 
     if not use_kernel_pca:
         print("Running PCA...", end="")
