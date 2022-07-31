@@ -12,9 +12,9 @@ def main(
     example_raw=None,
     img_size=(512, 512),
     latent_scaling=1,
+    latent_damping=False,
     latent_vel_factor=0.001,
-    latent_damping=0.7,
-    dynamic_latent=False,
+    latent_damping_factor=0.7,
     adaptive_scaling=True,
     latent_buffer_size=1000,
     fullscreen=True,
@@ -49,9 +49,9 @@ def main(
             # scale latent dim according to network
             z = z * latent_scaling
             z = z * img_model.latent_std + img_model.latent_mean
-            if dynamic_latent:
+            if latent_damping:
                 # update latent vector
-                latent_vel *= latent_damping
+                latent_vel *= latent_damping_factor
                 magnitude = (previous_z - z).norm()
                 latent_vel += (z - latent) * magnitude * latent_vel_factor
                 latent += latent_vel
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     # eigenface, kernel-eigenface or VAE
     img_model_type = "eigenface"
     # hand, face or sound
-    latent_model_type = "sound"
+    latent_model_type = "hand"
     # whether to jit compile the image model
     jit_img_model = True
 
