@@ -1,8 +1,9 @@
+import time
 import cv2
 import torch
 import numpy as np
 from queue import deque
-from models import Eigenface, VAE
+from models import Eigenface, VAE, DCGAN
 from latent import HandLatent, FaceLatent, SoundLatent
 
 
@@ -34,6 +35,7 @@ def main(
         cv2.namedWindow("img", cv2.WND_PROP_FULLSCREEN)
         cv2.setWindowProperty("img", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
+    last_frame = time.time()
     while True:
         # compute latent vector
         z = latent_model.get_latent()
@@ -66,10 +68,14 @@ def main(
             cv2.imshow("img", img)
             cv2.waitKey(1)
 
+        curr_frame = time.time()
+        print(f"{1 / (curr_frame - last_frame):.2f} FPS")
+        last_frame = curr_frame
+
 
 if __name__ == "__main__":
-    # eigenface, kernel-eigenface or VAE
-    img_model_type = "eigenface"
+    # eigenface, kernel-eigenface, DCGAN or VAE
+    img_model_type = "DCGAN"
     # hand, face or sound
     latent_model_type = "hand"
     # whether to jit compile the image model
@@ -85,16 +91,21 @@ if __name__ == "__main__":
         img_model = torch.load("models/eigenface.pt")
     elif img_model_type == "kernel-eigenface":
         img_model = torch.load("models/kernel-eigenface.pt")
+    elif img_model_type == "DCGAN":
+        img_model = DCGAN("models/gan4.model")
     else:
         raise ValueError(f"Unknown model type {img_model_type}")
 
     if jit_img_model:
-        m = torch.jit.trace(img_model, torch.randn(img_model.latent_dim))
-        m.latent_dim = img_model.latent_dim
-        m.latent_mean = img_model.latent_mean
-        m.latent_std = img_model.latent_std
-        m.generate = img_model.generate
-        img_model = m
+        try:
+            m = torch.jit.trace(img_model, torch.randn(img_model.latent_dim))
+            m.latent_dim = img_model.latent_dim
+            m.latent_mean = img_model.latent_mean
+            m.latent_std = img_model.latent_std
+            m.generate = img_model.generate
+            img_model = m
+        except:
+            print("Failed to JIT trace the model. Continuing...")
 
     # create latent model and potentially load example data
     data = None

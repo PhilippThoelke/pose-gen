@@ -6,6 +6,7 @@ from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 import pytorch_lightning as pl
 from sklearn.decomposition import KernelPCA
+from torchgan.models.dcgan import DCGANGenerator
 
 
 class Eigenface(nn.Module):
@@ -59,6 +60,30 @@ class KernelEigenface:
         return torch.from_numpy(
             self.pca.inverse_transform(latent.reshape(1, -1))
         ).reshape(self.img_shape)
+
+
+class DCGAN:
+    def __init__(self, ckpt_path):
+        self.latent_dim = 100
+        self.latent_mean = 0
+        self.latent_std = 1
+
+        state_dict = torch.load(ckpt_path, map_location="cpu")["generator"]
+        self.model = DCGANGenerator(
+            encoding_dims=self.latent_dim,
+            out_channels=3,
+            out_size=128,
+            step_channels=32,
+            nonlinearity=nn.LeakyReLU(0.2),
+            last_nonlinearity=nn.Tanh(),
+        )
+        self.model.load_state_dict(state_dict)
+        self.model.eval()
+        self.model = torch.jit.trace(self.model, torch.randn(1, self.latent_dim))
+
+    def generate(self, latent):
+        with torch.no_grad():
+            return self.model(latent[None])[0].permute(1, 2, 0) / 2 + 0.5
 
 
 class VAE(pl.LightningModule):

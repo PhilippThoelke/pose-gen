@@ -158,6 +158,7 @@ dependencies:
     - tensorboard-plugin-wit==1.8.1
     - torch-tb-profiler==0.4.0
     - torchfile==0.1.0
+    - torchgan==0.1.0
     - torchmetrics==0.8.2
     - torchnet==0.0.4
     - typing-extensions==4.2.0
@@ -165,6 +166,7 @@ dependencies:
     - visdom==0.1.8.9
     - websocket-client==1.2.3
     - werkzeug==2.1.2
+    - wget==3.2
     - yarl==1.7.2
     - zipp==3.8.0
 prefix: /home/philipp/conda/envs/pose
