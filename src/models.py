@@ -62,9 +62,10 @@ class KernelEigenface:
         ).reshape(self.img_shape)
 
 
-class DCGAN:
+class DCGAN(nn.Module):
     def __init__(self, ckpt_path):
-        self.latent_dim = 100
+        super(DCGAN, self).__init__()
+        self.latent_dim = 128
         self.latent_mean = 0
         self.latent_std = 1
 
@@ -84,6 +85,9 @@ class DCGAN:
     def generate(self, latent):
         with torch.no_grad():
             return self.model(latent[None])[0].permute(1, 2, 0) / 2 + 0.5
+
+    def forward(self, latent):
+        return self.generate(latent)
 
 
 class VAE(pl.LightningModule):

@@ -13,9 +13,10 @@ def main(
     example_raw=None,
     img_size=(512, 512),
     latent_scaling=1,
-    latent_damping=False,
-    latent_vel_factor=0.001,
-    latent_damping_factor=0.7,
+    latent_damping=True,
+    latent_vel_factor=0.00075,
+    latent_damping_factor=0.93,
+    undamped_latent_scale=0.2,
     adaptive_scaling=True,
     latent_buffer_size=1000,
     fullscreen=True,
@@ -57,10 +58,10 @@ def main(
                 magnitude = (previous_z - z).norm()
                 latent_vel += (z - latent) * magnitude * latent_vel_factor
                 latent += latent_vel
-            else:
-                latent = z
             # generate image
-            img = img_model.generate(latent).numpy()
+            img = img_model.generate(
+                latent + z * (undamped_latent_scale if latent_damping else 1)
+            ).numpy()
             # visualize the image
             if img.shape[2] == 3:
                 img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
@@ -77,7 +78,7 @@ if __name__ == "__main__":
     # eigenface, kernel-eigenface, DCGAN or VAE
     img_model_type = "DCGAN"
     # hand, face or sound
-    latent_model_type = "hand"
+    latent_model_type = "sound"
     # whether to jit compile the image model
     jit_img_model = True
 
@@ -92,7 +93,7 @@ if __name__ == "__main__":
     elif img_model_type == "kernel-eigenface":
         img_model = torch.load("models/kernel-eigenface.pt")
     elif img_model_type == "DCGAN":
-        img_model = DCGAN("models/gan4.model")
+        img_model = DCGAN("models/gan4-epoch110.model")
     else:
         raise ValueError(f"Unknown model type {img_model_type}")
 
