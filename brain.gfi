@@ -1,0 +1,308 @@
+links:
+- node_in: filter0
+  node_out: buffer0
+  slot_in: data
+  slot_out: out
+- node_in: select1
+  node_out: filter0
+  slot_in: data
+  slot_out: filtered_data
+- node_in: select0
+  node_out: lslclient0
+  slot_in: data
+  slot_out: out
+- node_in: table0
+  node_out: reshape0
+  slot_in: new_entry
+  slot_out: out
+- node_in: buffer0
+  node_out: select0
+  slot_in: val
+  slot_out: out
+- node_in: oscout0
+  node_out: table0
+  slot_in: data
+  slot_out: table
+- node_in: reshape0
+  node_out: select1
+  slot_in: array
+  slot_out: out
+nodes:
+  buffer0:
+    _type: Buffer
+    category: signal
+    gui_kwargs:
+      pos:
+      - 1044
+      - 361
+    params:
+      buffer:
+        axis:
+          _value: -1
+          vmax: 3
+          vmin: -1
+        reset:
+          _value: false
+          trigger: true
+        size:
+          _value: 1024
+          vmax: 5000
+          vmin: 1
+      common:
+        autotrigger:
+          _value: false
+          trigger: false
+        max_frequency:
+          _value: 30.0
+          vmax: 60.0
+          vmin: 0.0
+  filter0:
+    _type: Filter
+    category: signal
+    gui_kwargs:
+      pos:
+      - 1262
+      - 367
+    params:
+      bandpass:
+        apply:
+          _value: false
+          trigger: false
+        f_high:
+          _value: 50.0
+          vmax: 10000.0
+          vmin: 1.0
+        f_low:
+          _value: 1.0
+          vmax: 9999.0
+          vmin: 0.01
+        method:
+          _value: Causal
+          options:
+          - Causal
+          - Zero-phase
+        order:
+          _value: 3
+          vmax: 10
+          vmin: 1
+        padding:
+          _value: 0.1
+          vmax: 1.0
+          vmin: 0.01
+        ripple:
+          _value: 1.0
+          vmax: 10.0
+          vmin: 0.1
+        type:
+          _value: butterworth
+          options:
+          - butterworth
+          - chebyshev
+          - elliptic
+      common:
+        autotrigger:
+          _value: false
+          trigger: false
+        max_frequency:
+          _value: 30.0
+          vmax: 60.0
+          vmin: 0.0
+      notch:
+        Q:
+          _value: 10.0
+          vmax: 30.0
+          vmin: 0.1
+        apply:
+          _value: true
+          trigger: false
+        f_center:
+          _value: 60.0
+          vmax: 10000.0
+          vmin: 0.01
+        method:
+          _value: Causal
+          options:
+          - Causal
+          - Zero-phase
+        order:
+          _value: 1
+          vmax: 4
+          vmin: 1
+        padding:
+          _value: 0.1
+          vmax: 1.0
+          vmin: 0.01
+        ripple:
+          _value: 1.0
+          vmax: 10.0
+          vmin: 0.1
+        type:
+          _value: butterworth
+          options:
+          - butterworth
+          - chebyshev
+          - elliptic
+      signal:
+        buffer_size:
+          _value: 512
+          vmax: 3
+          vmin: -1
+        demean:
+          _value: false
+          trigger: false
+        detrend:
+          _value: false
+          trigger: false
+        internal_buffer:
+          _value: false
+          trigger: false
+  lslclient0:
+    _type: LSLClient
+    category: inputs
+    gui_kwargs:
+      pos:
+      - 578
+      - 353
+    params:
+      common:
+        autotrigger:
+          _value: true
+          trigger: false
+        max_frequency:
+          _value: 30.0
+          vmax: 60.0
+          vmin: 0.0
+      lsl_stream:
+        refresh:
+          _value: false
+          trigger: true
+        source_name:
+          _value: Muse00:55:DA:B9:8A:4E
+          options: null
+        stream_name:
+          _value: ''
+          options: null
+  oscout0:
+    _type: OSCOut
+    category: outputs
+    gui_kwargs:
+      pos:
+      - 2164
+      - 453
+    params:
+      common:
+        autotrigger:
+          _value: false
+          trigger: false
+        max_frequency:
+          _value: 30.0
+          vmax: 60.0
+          vmin: 0.0
+      osc:
+        address:
+          _value: localhost
+          options: null
+        bundle:
+          _value: false
+          trigger: false
+        port:
+          _value: 8000
+          vmax: 65535
+          vmin: 0
+        prefix:
+          _value: /goofi
+          options: null
+  reshape0:
+    _type: Reshape
+    category: array
+    gui_kwargs:
+      pos:
+      - 1716
+      - 372
+    params:
+      common:
+        autotrigger:
+          _value: false
+          trigger: false
+        max_frequency:
+          _value: 30.0
+          vmax: 60.0
+          vmin: 0.0
+      reshape:
+        shape:
+          _value: '-1'
+          options: null
+  select0:
+    _type: Select
+    category: array
+    gui_kwargs:
+      pos:
+      - 817
+      - 353
+    params:
+      common:
+        autotrigger:
+          _value: false
+          trigger: false
+        max_frequency:
+          _value: 30.0
+          vmax: 60.0
+          vmin: 0.0
+      select:
+        axis:
+          _value: 0
+          vmax: 3
+          vmin: -1
+        exclude:
+          _value: Right AUX
+          options: null
+        include:
+          _value: ''
+          options: null
+  select1:
+    _type: Select
+    category: array
+    gui_kwargs:
+      pos:
+      - 1484
+      - 368
+    params:
+      common:
+        autotrigger:
+          _value: false
+          trigger: false
+        max_frequency:
+          _value: 20.0
+          vmax: 60.0
+          vmin: 0.0
+      select:
+        axis:
+          _value: 1
+          vmax: 3
+          vmin: -1
+        exclude:
+          _value: ''
+          options: null
+        include:
+          _value: '-25:'
+          options: null
+  table0:
+    _type: Table
+    category: inputs
+    gui_kwargs:
+      pos:
+      - 1955
+      - 363
+    params:
+      common:
+        autotrigger:
+          _value: false
+          trigger: false
+        max_frequency:
+          _value: 30.0
+          vmax: 60.0
+          vmin: 0.0
+      table:
+        new_entry_key:
+          _value: latent
+          options: null
