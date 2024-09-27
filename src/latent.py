@@ -1,8 +1,11 @@
-import cv2
-import torch
-import mediapipe as mp
 from queue import deque
-import sounddevice as sd
+
+import cv2
+import mediapipe as mp
+import torch
+from oscpy.server import OSCThreadServer
+
+# import sounddevice as sd
 from scipy.ndimage import gaussian_filter1d
 
 
@@ -102,3 +105,20 @@ class SoundLatent(LatentProvider):
 
     def audio_callback(self, indata, *args, **kwargs):
         self.audio_buffer.extend(indata[:: SoundLatent.DOWNSAMPLE, 0])
+
+
+class OSCLatent(LatentProvider):
+    def __init__(self, dimension, random_projection=True, port=8000):
+        super().__init__(dimension, random_projection, 100)
+
+        self.server = OSCThreadServer()
+        self.server.listen(address="0.0.0.0", port=port, default=True)
+        self.server.bind(b"/goofi/latent", self.osc_callback)
+
+        self.latent = torch.zeros(100)
+
+    def osc_callback(self, *message):
+        self.latent = torch.tensor(message).float()
+
+    def get_latent(self):
+        return self.transform(self.latent)

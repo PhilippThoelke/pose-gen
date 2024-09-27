@@ -1,10 +1,13 @@
 import time
-import cv2
-import torch
-import numpy as np
+from glob import glob
 from queue import deque
-from models import Eigenface, VAE, DCGAN
-from latent import HandLatent, FaceLatent, SoundLatent
+
+import cv2
+import numpy as np
+import torch
+
+from latent import FaceLatent, HandLatent, OSCLatent, SoundLatent
+from model import DCGAN, PGAN, VAE, Eigenface
 
 
 def main(
@@ -12,11 +15,11 @@ def main(
     latent_model,
     example_raw=None,
     img_size=(512, 512),
-    latent_scaling=1,
+    latent_scaling=.5,
     latent_damping=True,
-    latent_vel_factor=0.00075,
-    latent_damping_factor=0.93,
-    undamped_latent_scale=0.2,
+    latent_vel_factor=0.01,
+    latent_damping_factor=0.85,
+    undamped_latent_scale=0.15,
     adaptive_scaling=True,
     latent_buffer_size=1000,
     fullscreen=True,
@@ -75,18 +78,17 @@ def main(
 
 
 if __name__ == "__main__":
-    # eigenface, kernel-eigenface, DCGAN or VAE
-    img_model_type = "DCGAN"
-    # hand, face or sound
-    latent_model_type = "sound"
+    # eigenface, kernel-eigenface, DCGAN, PGAN or VAE
+    img_model_type = "PGAN"
+    # hand, face, sound or OSC
+    latent_model_type = "OSC"
     # whether to jit compile the image model
     jit_img_model = True
 
     # load model
     if img_model_type == "VAE":
-        img_model = VAE.load_from_checkpoint(
-            "models/lightning_logs/version_1/checkpoints/epoch=1-step=3310.ckpt"
-        )
+        path = glob("models/lightning_logs/version_7/checkpoints/*.ckpt")[0]
+        img_model = VAE.load_from_checkpoint(path)
         img_model.eval().freeze()
     elif img_model_type == "eigenface":
         img_model = torch.load("models/eigenface.pt")
@@ -94,6 +96,8 @@ if __name__ == "__main__":
         img_model = torch.load("models/kernel-eigenface.pt")
     elif img_model_type == "DCGAN":
         img_model = DCGAN("models/gan4-epoch110.model")
+    elif img_model_type == "PGAN":
+        img_model = PGAN.load_checkpoint(pretrained=True, model_name="celebAHQ-512")
     else:
         raise ValueError(f"Unknown model type {img_model_type}")
 
@@ -112,11 +116,13 @@ if __name__ == "__main__":
     data = None
     if latent_model_type == "hand":
         latent_model = HandLatent(img_model.latent_dim)
-        data = np.load("data/hands.npy")
+        # data = np.load("data/hands.npy")
     elif latent_model_type == "face":
         latent_model = FaceLatent(img_model.latent_dim)
     elif latent_model_type == "sound":
         latent_model = SoundLatent(img_model.latent_dim)
+    elif latent_model_type == "OSC":
+        latent_model = OSCLatent(img_model.latent_dim)
     else:
         raise ValueError(f"Unknown latent type {latent_model_type}")
 

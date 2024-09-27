@@ -1,17 +1,19 @@
 import os
-from tqdm import tqdm
+
 import torch
 from torch.utils.data import Subset
-from torchvision.datasets import LFWPeople, Flowers102, EuroSAT
-from torchvision.transforms import Compose, ToTensor, Resize
+from torchvision.datasets import EuroSAT, Flowers102, LFWPeople
+from torchvision.transforms import Compose, Resize, ToTensor
+from tqdm import tqdm
+
 from data import MRI
-from models import Eigenface, KernelEigenface
+from model import Eigenface, KernelEigenface
 
 
 if __name__ == "__main__":
-    num_images = 6000
+    num_images = 5000
     resize = True
-    resize_shape = (200, 200)
+    resize_shape = (512, 512)
     use_kernel_pca = False
     latent_dim = 200
 
@@ -20,7 +22,7 @@ if __name__ == "__main__":
         data_transforms = Compose([data_transforms, Resize(resize_shape)])
 
     # define the dataset
-    data = LFWPeople("data/", transform=data_transforms, download=True)
+    data = LFWPeople("~/data", transform=data_transforms, download=True)
     # data = Flowers102("data/", transform=data_transforms, download=True)
     # data = EuroSAT("data/", transform=data_transforms, download=True)
     # data = MRI("data/", transform=data_transforms)

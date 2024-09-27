@@ -1,11 +1,11 @@
 import numpy as np
+import pytorch_lightning as pl
 import torch
+from sklearn.decomposition import KernelPCA
 from torch import nn
 from torch.nn import functional as F
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
-import pytorch_lightning as pl
-from sklearn.decomposition import KernelPCA
 from torchgan.models.dcgan import DCGANGenerator
 
 
@@ -21,7 +21,10 @@ class Eigenface(nn.Module):
 
         images = images.reshape(images.size(0), -1)
         _, self.eigenvalues, self.principal_components = torch.pca_lowrank(
-            images, q=latent_dim, center=True, niter=niter,
+            images,
+            q=latent_dim,
+            center=True,
+            niter=niter,
         )
 
         latent = images @ self.principal_components
@@ -90,18 +93,76 @@ class DCGAN(nn.Module):
         return self.generate(latent)
 
 
+class PGAN(nn.Module):
+    def __init__(self, model):
+        super(PGAN, self).__init__()
+        self.latent_dim = 512
+        self.latent_mean = 0
+        self.latent_std = 1
+
+        self.model = model
+
+    @staticmethod
+    def load_checkpoint(pretrained=False, *args, **kwargs):
+        """
+        Progressive growing model
+        pretrained (bool): load a pretrained model ?
+        model_name (string): if pretrained, load one of the following models
+        celebaHQ-256, celebaHQ-512, DTD, celeba, cifar10. Default is celebaHQ.
+        """
+        import torch.utils.model_zoo as model_zoo
+
+        from models.progressive_gan import ProgressiveGAN as _PGAN
+
+        if "config" not in kwargs or kwargs["config"] is None:
+            kwargs["config"] = {}
+
+        model = _PGAN(
+            useGPU=kwargs.get("useGPU", True), storeAVG=True, **kwargs["config"]
+        )
+
+        checkpoint = {
+            "celebAHQ-256": "https://dl.fbaipublicfiles.com/gan_zoo/PGAN/celebaHQ_s6_i80000-6196db68.pth",
+            "celebAHQ-512": "https://dl.fbaipublicfiles.com/gan_zoo/PGAN/celebaHQ16_december_s7_i96000-9c72988c.pth",
+            "DTD": "https://dl.fbaipublicfiles.com/gan_zoo/PGAN/testDTD_s5_i96000-04efa39f.pth",
+            "celeba": "https://dl.fbaipublicfiles.com/gan_zoo/PGAN/celebaCropped_s5_i83000-2b0acc76.pth",
+        }
+        if pretrained:
+            if "model_name" in kwargs:
+                if kwargs["model_name"] not in checkpoint.keys():
+                    raise ValueError(
+                        "model_name should be in " + str(checkpoint.keys())
+                    )
+            else:
+                print("Loading default model : celebaHQ-256")
+                kwargs["model_name"] = "celebAHQ-256"
+            state_dict = model_zoo.load_url(
+                checkpoint[kwargs["model_name"]], map_location="cpu"
+            )
+            model.load_state_dict(state_dict)
+        return PGAN(model)
+
+    @torch.inference_mode()
+    def generate(self, latent):
+        return self.model.test(latent[None])[0].permute(1, 2, 0).cpu() / 2 + 0.5
+
+    def forward(self, latent):
+        return self.generate(latent)
+
+
 class VAE(pl.LightningModule):
     def __init__(
         self,
         channels=3,
-        h_dims=[8, 16, 32, 64],
-        latent_dim=1024,
-        latent_img_size=2,
+        h_dims=[16, 32, 64, 128],
+        latent_dim=128,
+        latent_img_size=8,
         kl_weight=2.5e-4,
         learning_rate=5e-3,
         alpha=0.99,
         warmup_steps=300,
         std_clip=2,
+        device="cuda",
     ):
         super().__init__()
         self.channels = channels
@@ -111,7 +172,7 @@ class VAE(pl.LightningModule):
         self.kl_weight = kl_weight
         self.learning_rate = learning_rate
         self.warmup_steps = warmup_steps
-        self.std_clip = torch.scalar_tensor(std_clip)
+        self.std_clip = torch.scalar_tensor(std_clip, device=device)
 
         h_dims.insert(0, channels)
 
@@ -222,7 +283,7 @@ class VAE(pl.LightningModule):
         recons_loss = F.mse_loss(recons, x)
         # KL divergence loss
         kl_loss = torch.mean(
-            -0.5 * torch.sum(1 + logvar - mu ** 2 - logvar.exp(), dim=1), dim=0
+            -0.5 * torch.sum(1 + logvar - mu**2 - logvar.exp(), dim=1), dim=0
         )
         # total loss
         loss = recons_loss + self.kl_weight * kl_loss
@@ -241,8 +302,8 @@ class VAE(pl.LightningModule):
         self.log("recons_loss", recons_loss)
         self.log("kl_loss", kl_loss)
         self.log("lr", self.optimizers().param_groups[0]["lr"])
-        self.logger.experiment.add_images("input", x / 2 + 0.5)
-        self.logger.experiment.add_images("reconstruction", recons / 2 + 0.5)
+        # self.logger.experiment.add_images("input", x / 2 + 0.5)
+        # self.logger.experiment.add_images("reconstruction", recons / 2 + 0.5)
         return loss
 
     def configure_optimizers(self):

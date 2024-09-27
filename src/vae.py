@@ -2,16 +2,16 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10, MNIST, Flowers102, LFWPeople
 from torchvision.transforms import Compose, ToTensor, Lambda, Resize
 import pytorch_lightning as pl
-from models import VAE
+from model import VAE
 
 
 if __name__ == "__main__":
     # load data
     data_transforms = Compose(
-        [ToTensor(), Lambda(lambda x: x * 2 - 1), Resize((128, 128))]
+        [ToTensor(), Lambda(lambda x: x * 2 - 1), Resize((256, 256))]
     )
-    data = LFWPeople("data/", transform=data_transforms, download=True)
-    dl = DataLoader(data, batch_size=8, shuffle=True, num_workers=4)
+    data = LFWPeople("~/data/", transform=data_transforms, download=True)
+    dl = DataLoader(data, batch_size=128, shuffle=True, num_workers=4)
 
     # create lightning module
     module = VAE(channels=data[0][0].size(0))
